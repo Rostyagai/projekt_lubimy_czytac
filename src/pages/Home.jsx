@@ -1,37 +1,76 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { db } from "../firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 function Home() {
   const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedBooks = JSON.parse(localStorage.getItem("books")) || [];
-    setBooks(savedBooks);
+    const fetchBooks = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "books"));
+
+        const booksData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setBooks(booksData);
+      } catch (error) {
+        console.error("ERROR: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBooks();
   }, []);
+
+  if (loading) return <p className="container">Ładowanie...</p>;
 
   return (
     <section>
       <div className="hero">
         <h1 className="hero__title">Moja Biblioteka</h1>
-        <p>Lista książek, które przeczytałem lub planuję.</p>
+        <p>Lista książek z bazy Firebase.</p>
       </div>
 
-      <div className="book-grid">
-        {books.length > 0 ? (
-          books.map((book) => (
-            <article key={book.id} className="book-card">
-              <div className="book-card__content">
-                <h2 className="book-card__title">{book.title}</h2>
-                <p className="book-card__author">Autor: {book.author}</p>
-                <Link to={`/book/${book.id}`} className="book-card__link">
-                  Zobacz szczegóły
-                </Link>
-              </div>
-            </article>
-          ))
-        ) : (
-          <p>Brak książek w bazie.</p>
-        )}
+      <div className="container">
+        <div className="book-grid">
+          {books.length > 0 ? (
+            books.map((book) => (
+              <article key={book.id} className="book-card">
+                {/* Sekcja wizualna: Okładka lub Placeholder (tak jak w Details) */}
+                <div className="book-card__cover-wrapper">
+                  {book.coverUrl ? (
+                    <img
+                      src={book.coverUrl}
+                      alt={book.title}
+                      className="book-card__image"
+                    />
+                  ) : (
+                    /* Stylizowany prostokąt zastępczy */
+                    <div className="book-card__placeholder">
+                      <span>Brak okładki</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="book-card__content">
+                  <h2 className="book-card__title">{book.title}</h2>
+                  <p className="book-card__author">Autor: {book.author}</p>
+                  <p className="book-card__genre-tag">{book.genre}</p>
+                  <Link to={`/book/${book.id}`} className="book-card__link">
+                    Zobacz szczegóły
+                  </Link>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p>Brak książek w bazie.</p>
+          )}
+        </div>
       </div>
     </section>
   );
