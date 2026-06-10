@@ -7,6 +7,7 @@ function Home() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyBook, setDailyBook] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -19,24 +20,18 @@ function Home() {
 
         setBooks(booksData);
 
-        // --- LOGIKA WYBORU KSIĄŻKI DNIA (STAŁA DLA WSZYSTKICH) ---
         if (booksData.length > 0) {
-          // 1. Sortujemy książki po ID, aby kolejność była identyczna u każdego użytkownika
           const sortedBooks = [...booksData].sort((a, b) =>
             a.id.localeCompare(b.id)
           );
 
-          // 2. Pobieramy aktualną datę (rok, miesiąc, dzień)
           const today = new Date();
           const dateSeed =
             today.getFullYear() * 10000 +
             (today.getMonth() + 1) * 100 +
             today.getDate();
 
-          // 3. Wybieramy indeks na podstawie daty (modulo liczba książek)
-          // Dzięki temu indeks zmieni się tylko wtedy, gdy zmieni się dzień
           const dailyIndex = dateSeed % sortedBooks.length;
-
           setDailyBook(sortedBooks[dailyIndex]);
         }
       } catch (error) {
@@ -49,12 +44,15 @@ function Home() {
     fetchBooks();
   }, []);
 
-  // Obliczanie statystyk
   const totalBooks = books.length;
   const uniqueGenres = [...new Set(books.map((book) => book.genre))].filter(
     Boolean
   ).length;
   const uniqueAuthors = [...new Set(books.map((book) => book.author))].length;
+
+  const filteredBooks = books.filter((book) =>
+    book.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) return <p className="container">Ładowanie danych...</p>;
 
@@ -65,7 +63,6 @@ function Home() {
         <p>Kolekcja książek zsynchronizowana z bazą danych Firebase.</p>
       </div>
 
-      {/* Statystyki */}
       <div className="stats-section">
         <div className="container">
           <div className="stats-container">
@@ -91,7 +88,6 @@ function Home() {
           <span className="quote-author">— Umberto Eco</span>
         </div>
 
-        {/* --- SEKCJA: KSIĄŻKA DNIA (IDENTYCZNA DLA WSZYSTKICH) --- */}
         {dailyBook && (
           <div className="daily-book-section">
             <div className="container">
@@ -135,9 +131,25 @@ function Home() {
           </div>
         )}
 
+        <h1 className="search__title">Wyszukiwarka</h1>
+        <div className="search-wrapper">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Szukaj po tytule książki..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="search-clear" onClick={() => setSearchQuery("")}>
+              ✕
+            </button>
+          )}
+        </div>
+
         <div className="book-grid">
-          {books.length > 0 ? (
-            books.map((book) => (
+          {filteredBooks.length > 0 ? (
+            filteredBooks.map((book) => (
               <article key={book.id} className="book-card">
                 <div className="book-card__cover-wrapper">
                   {book.coverUrl ? (
@@ -169,7 +181,11 @@ function Home() {
               </article>
             ))
           ) : (
-            <p>Brak dostępnych książek w bazie danych.</p>
+            <p>
+              {searchQuery
+                ? "Nie znaleziono książek pasujących do wyszukiwania."
+                : "Brak dostępnych książek w bazie danych."}
+            </p>
           )}
         </div>
       </div>
